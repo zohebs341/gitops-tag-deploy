@@ -42,5 +42,5 @@ runs:
         git config user.email "ga-deployer@tietoevry.com"
         git add .
         git commit --allow-empty -m "Deploy \"${{ inputs.docker-image-tag }}\" tag into ${{ inputs.target-file }}"
-        git push -u origin master
+        git push -u origin main
       shell: bash
