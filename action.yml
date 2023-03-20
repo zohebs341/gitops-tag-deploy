@@ -1,0 +1,46 @@
+name: 'GitOps Deploy Tag Action'
+description: 'Updates image tag in target file'
+inputs:
+  gitops-repo:
+    description: 'gitops repo to be updated'
+    required: true
+    default: ${DEPLOY_GITOPS_REPO}
+
+  target-file:
+    description: 'Target yaml file to replace tag'
+    required: true
+
+  docker-image-tag:
+    description: 'docker image tag'
+    required: true
+    default: ${GITHUB_SHA::7}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Checkout gitops
+      run: |
+        echo Checking out ${GITHUB_SERVER_URL}/${{ inputs.gitops-repo }}.git
+        rm -rf ./gitops_tmp
+
+        GH_URL=$(echo "$GITHUB_SERVER_URL" | sed 's,://,://x-access-token:'"$DEPLOY_TOKEN"'@,g')
+        git clone --depth 1 ${GH_URL}/${{ inputs.gitops-repo }}.git ./gitops_tmp
+      shell: bash
+
+    - name: Update image tag
+      working-directory: ./gitops_tmp
+      run: |
+        echo Setting \"${{ inputs.docker-image-tag }}\" tag in "${{ inputs.target-file }}"
+        sed -i 's/tag: .*$/tag: "'${{ inputs.docker-image-tag }}'"/g' ${{ inputs.target-file }}
+      shell: bash
+
+    - name: Push changes to gitops
+      working-directory: ./gitops_tmp
+      run: |
+        echo Pushing changes to ${{ inputs.gitops-repo }}
+        git config user.name "GitHub Actions"
+        git config user.email "ga-deployer@tietoevry.com"
+        git add .
+        git commit --allow-empty -m "Deploy \"${{ inputs.docker-image-tag }}\" tag into ${{ inputs.target-file }}"
+        git push -u origin master
+      shell: bash
